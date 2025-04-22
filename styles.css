@@ -53,10 +53,11 @@ body {
   opacity: 1; /* Ensure the analytics section is visible */
 }
 
-#analyticsCanvas {
+#analyticsChart {
   width: 100%;
   height: 400px;
   margin-top: 20px;
+  display: block; /* Ensure the canvas is displayed */
 }
 
 @keyframes fadeIn {
@@ -75,7 +76,7 @@ body {
       font-size: 2rem;
   }
 
-  #analyticsCanvas {
+  #analyticsChart {
       height: 300px;
   }
 }
