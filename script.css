@@ -1,0 +1,119 @@
+const hyperfocus = {
+    timer: null,
+    startTime: null,
+    sessions: JSON.parse(localStorage.getItem('hyperfocusSessions')) || [],
+
+    start() {
+        this.startTime = Date.now();
+        this.timer = setInterval(() => {
+            this.updateTimerDisplay();
+        }, 10);
+        document.getElementById('timerDisplay').classList.add('active');
+        document.getElementById('startButton').disabled = true;
+        document.getElementById('stopButton').disabled = false;
+    },
+
+    stop() {
+        clearInterval(this.timer);
+        const duration = (Date.now() - this.startTime) / 1000;
+        const focusRating = prompt("Rate your focus (1-10):");
+        const rating = parseInt(focusRating) || 5;
+        this.sessions.push({ duration, timestamp: new Date().toISOString(), focusRating: rating });
+        localStorage.setItem('hyperfocusSessions', JSON.stringify(this.sessions));
+        this.updateTimerDisplay(0);
+        document.getElementById('timerDisplay').classList.remove('active');
+        document.getElementById('startButton').disabled = false;
+        document.getElementById('stopButton').disabled = true;
+        this.renderAnalytics();
+    },
+
+    updateTimerDisplay(time = Date.now() - this.startTime) {
+        const ms = Math.floor(time % 1000);
+        const sec = Math.floor((time / 1000) % 60);
+        const min = Math.floor((time / (1000 * 60)) % 60);
+        const hr = Math.floor(time / (1000 * 60 * 60));
+        document.getElementById('timerDisplay').innerText = `${hr.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}:${ms.toString().padStart(3, '0')}`;
+    },
+
+    getAnalyticsSummary() {
+        const totalSessions = this.sessions.length;
+        const avgDuration = this.sessions.reduce((sum, session) => sum + session.duration, 0) / 60 / totalSessions || 0;
+        const avgFocus = this.sessions.reduce((sum, session) => sum + session.focusRating, 0) / totalSessions || 0;
+        return { totalSessions, avgDuration, avgFocus };
+    },
+
+    renderAnalytics() {
+        const { totalSessions, avgDuration, avgFocus } = this.getAnalyticsSummary();
+        document.getElementById('totalSessions').innerText = totalSessions;
+        document.getElementById('avgDuration').innerText = avgDuration.toFixed(2);
+        document.getElementById('avgFocus').innerText = avgFocus.toFixed(2);
+
+        this.render3DVisualizations();
+    },
+
+    render3DVisualizations() {
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / 400, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('analyticsCanvas') });
+        renderer.setSize(window.innerWidth, 400);
+
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(10, 10, 10);
+
+        scene.add(ambientLight);
+        scene.add(pointLight);
+
+        const gridHelper = new THREE.GridHelper(10, 10);
+        scene.add(gridHelper);
+
+        camera.position.z = 5;
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        this.sessions.slice(-10).forEach((session, index) => {
+            const durationMinutes = session.duration / 60;
+            const barGeometry = new THREE.BoxGeometry(0.5, durationMinutes, 0.5);
+            const barMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+            const bar = new THREE.Mesh(barGeometry, barMaterial);
+            bar.position.set(index - 4.75, durationMinutes / 2, 0);
+            scene.add(bar);
+
+            const sphereGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+            const sphereMaterial = new THREE.MeshBasicMaterial({
+                color: session.focusRating >= 7 ? 0x00ffff : session.focusRating >= 4 ? 0x0000ff : 0xffff00
+            });
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.set(index - 4.75, 0, session.focusRating / 2);
+            scene.add(sphere);
+        });
+
+        const animate = function () {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        };
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / 400;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, 400);
+        });
+    }
+};
+
+document.getElementById('startButton').addEventListener('click', () => hyperfocus.start());
+document.getElementById('stopButton').addEventListener('click', () => hyperfocus.stop());
+document.getElementById('toggleAnalyticsButton').addEventListener('click', () => {
+    const analyticsSection = document.getElementById('analyticsSection');
+    analyticsSection.classList.toggle('active');
+    if (analyticsSection.classList.contains('active')) {
+        hyperfocus.renderAnalytics();
+    }
+});
+
+window.onload = () => {
+    hyperfocus.renderAnalytics();
+};
