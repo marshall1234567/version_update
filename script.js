@@ -71,6 +71,11 @@ const hyperfocus = {
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
 
+        // Clear previous visualizations
+        while (scene.children.length > 0) {
+            scene.remove(scene.children[0]);
+        }
+
         this.sessions.slice(-10).forEach((session, index) => {
             const durationMinutes = session.duration / 60;
             const barGeometry = new THREE.BoxGeometry(0.5, durationMinutes, 0.5);
