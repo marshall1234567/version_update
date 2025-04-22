@@ -1,10 +1,17 @@
 const hyperfocus = {
     timer: null,
     startTime: null,
+    sessionName: '',
     sessions: JSON.parse(localStorage.getItem('hyperfocusSessions')) || [],
     chart: null,
 
     start() {
+        this.sessionName = prompt("Please add your session name for initiating your hyperfocus session:");
+        if (!this.sessionName) {
+            alert("Session name is required to start the timer.");
+            return;
+        }
+        alert(`Your session for this hyperfocus has started.`);
         this.startTime = Date.now();
         this.timer = setInterval(() => {
             this.updateTimerDisplay();
@@ -19,13 +26,22 @@ const hyperfocus = {
         const duration = (Date.now() - this.startTime) / 1000;
         const focusRating = prompt("Rate your focus (1-10):");
         const rating = parseInt(focusRating) || 5;
-        this.sessions.push({ duration, timestamp: new Date().toISOString(), focusRating: rating });
+        this.sessions.push({ sessionName: this.sessionName, duration, timestamp: new Date().toISOString(), focusRating: rating });
         localStorage.setItem('hyperfocusSessions', JSON.stringify(this.sessions));
         this.updateTimerDisplay(0);
         document.getElementById('timerDisplay').classList.remove('active');
         document.getElementById('startButton').disabled = false;
         document.getElementById('stopButton').disabled = true;
+
+        // Provide session analysis
+        const avgDuration = this.sessions.reduce((sum, session) => sum + session.duration, 0) / this.sessions.length;
+        const estimatedNextDuration = avgDuration * 0.9; // Estimate 10% less time for the next session
+        alert(`Here's the analysis for the session "${this.sessionName}":
+- You have taken ${(duration / 60).toFixed(2)} minutes to complete the session.
+- Next estimated session duration to lower the time: ${(estimatedNextDuration / 60).toFixed(2)} minutes.`);
+
         this.renderAnalytics();
+        this.renderSessionHistory();
     },
 
     updateTimerDisplay(time = Date.now() - this.startTime) {
@@ -61,11 +77,12 @@ const hyperfocus = {
 
         const durations = this.sessions.slice(-10).map(session => session.duration / 60);
         const ratings = this.sessions.slice(-10).map(session => session.focusRating);
+        const labels = this.sessions.slice(-10).map(session => session.sessionName);
 
         this.chart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: durations.map((_, index) => `Session ${index + 1}`),
+                labels: labels,
                 datasets: [
                     {
                         label: 'Duration (minutes)',
@@ -111,6 +128,33 @@ const hyperfocus = {
                 }
             }
         });
+    },
+
+    renderSessionHistory() {
+        const sessionList = document.getElementById('sessionList');
+        sessionList.innerHTML = '';
+        this.sessions.forEach((session, index) => {
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `
+                ${session.sessionName} - ${(session.duration / 60).toFixed(2)} minutes - Focus: ${session.focusRating}
+                <button onclick="hyperfocus.updateSession(${index})">Update</button>
+            `;
+            sessionList.appendChild(listItem);
+        });
+    },
+
+    updateSession(index) {
+        const session = this.sessions[index];
+        const newDuration = prompt(`Enter new duration for "${session.sessionName}" (in seconds):`, session.duration);
+        const newFocusRating = prompt(`Enter new focus rating for "${session.sessionName}" (1-10):`, session.focusRating);
+
+        if (newDuration !== null && newFocusRating !== null) {
+            session.duration = parseFloat(newDuration) || session.duration;
+            session.focusRating = parseInt(newFocusRating) || session.focusRating;
+            localStorage.setItem('hyperfocusSessions', JSON.stringify(this.sessions));
+            this.renderAnalytics();
+            this.renderSessionHistory();
+        }
     }
 };
 
@@ -121,9 +165,11 @@ document.getElementById('toggleAnalyticsButton').addEventListener('click', () =>
     analyticsSection.classList.toggle('active');
     if (analyticsSection.classList.contains('active')) {
         hyperfocus.renderAnalytics();
+        hyperfocus.renderSessionHistory();
     }
 });
 
 window.onload = () => {
     hyperfocus.renderAnalytics();
+    hyperfocus.renderSessionHistory();
 };
