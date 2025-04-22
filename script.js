@@ -2,6 +2,7 @@ const hyperfocus = {
     timer: null,
     startTime: null,
     sessions: JSON.parse(localStorage.getItem('hyperfocusSessions')) || [],
+    chart: null,
 
     start() {
         this.startTime = Date.now();
@@ -48,63 +49,67 @@ const hyperfocus = {
         document.getElementById('avgDuration').innerText = avgDuration.toFixed(2);
         document.getElementById('avgFocus').innerText = avgFocus.toFixed(2);
 
-        this.render3DVisualizations();
+        this.renderChart();
     },
 
-    render3DVisualizations() {
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / 400, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('analyticsCanvas') });
-        renderer.setSize(window.innerWidth, 400);
+    renderChart() {
+        const ctx = document.getElementById('analyticsChart').getContext('2d');
 
-        const ambientLight = new THREE.AmbientLight(0x404040);
-        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-        pointLight.position.set(10, 10, 10);
-
-        scene.add(ambientLight);
-        scene.add(pointLight);
-
-        const gridHelper = new THREE.GridHelper(10, 10);
-        scene.add(gridHelper);
-
-        camera.position.z = 5;
-
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-
-        // Clear previous visualizations
-        while (scene.children.length > 0) {
-            scene.remove(scene.children[0]);
+        if (this.chart) {
+            this.chart.destroy();
         }
 
-        this.sessions.slice(-10).forEach((session, index) => {
-            const durationMinutes = session.duration / 60;
-            const barGeometry = new THREE.BoxGeometry(0.5, durationMinutes, 0.5);
-            const barMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-            const bar = new THREE.Mesh(barGeometry, barMaterial);
-            bar.position.set(index - 4.75, durationMinutes / 2, 0);
-            scene.add(bar);
+        const durations = this.sessions.slice(-10).map(session => session.duration / 60);
+        const ratings = this.sessions.slice(-10).map(session => session.focusRating);
 
-            const sphereGeometry = new THREE.SphereGeometry(0.1, 32, 32);
-            const sphereMaterial = new THREE.MeshBasicMaterial({
-                color: session.focusRating >= 7 ? 0x00ffff : session.focusRating >= 4 ? 0x0000ff : 0xffff00
-            });
-            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-            sphere.position.set(index - 4.75, 0, session.focusRating / 2);
-            scene.add(sphere);
-        });
-
-        const animate = function () {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        };
-
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / 400;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, 400);
+        this.chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: durations.map((_, index) => `Session ${index + 1}`),
+                datasets: [
+                    {
+                        label: 'Duration (minutes)',
+                        data: durations,
+                        backgroundColor: 'rgba(0, 0, 255, 0.5)',
+                        borderColor: 'rgba(0, 0, 255, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Focus Rating',
+                        data: ratings,
+                        type: 'line',
+                        backgroundColor: 'rgba(0, 255, 0, 0.5)',
+                        borderColor: 'rgba(0, 255, 0, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Duration (minutes)'
+                        }
+                    },
+                    y1: {
+                        beginAtZero: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Focus Rating'
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
         });
     }
 };
