@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyperfocus Timer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="timer-display fadeIn" id="timerDisplay">00:00:00:000</div>
+        <div class="controls">
+            <button id="startButton" class="control-button">Start Hyperfocus</button>
+            <button id="stopButton" class="control-button" disabled>Stop Hyperfocus</button>
+            <button id="toggleAnalyticsButton" class="control-button">Toggle Analytics</button>
+        </div>
+        <div class="analytics fadeIn" id="analyticsSection">
+            <div class="stats" id="statsDisplay">
+                <p>Total Sessions: <span id="totalSessions">0</span></p>
+                <p>Average Duration: <span id="avgDuration">0</span> minutes</p>
+                <p>Average Focus: <span id="avgFocus">0</span></p>
+            </div>
+            <canvas id="analyticsCanvas"></canvas>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
